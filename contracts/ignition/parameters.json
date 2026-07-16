@@ -1,0 +1,6 @@
+{
+  "ShipStakeModule": {
+    "resolver": "0x60EACFb522797cC097383603709c2205AbefdF75",
+    "forfeiturePool": "0x532FdB40C802943DF65f78aE8C1219250f65d17a"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "shipstake",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "backend",
+    "frontend"
+  ]
+}

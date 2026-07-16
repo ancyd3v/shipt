@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-f859d6653d4661d457972418ed896d2ccfb591b8",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.9.1"
+  },
+  "userSourceNameMap": {
+    "contracts/ShipStake.sol": "project/contracts/ShipStake.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/ShipStake.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n/// @title ShipStake\n/// @notice Stake MON against a self-declared deadline. Get it back if you ship,\n///         forfeit it to a shared pool if you don't. Resolution is done by a\n///         trusted resolver (backend, checks GitHub PR/issue status) with a\n///         permissionless fallback so the app never gets stuck if the resolver\n///         goes offline.\ncontract ShipStake {\n    address public immutable resolver;\n    address public immutable forfeiturePool;\n    uint256 public stakeCount;\n\n    struct Stake {\n        address owner;\n        uint256 amount;\n        uint256 deadline;\n        bool resolved;\n        bool shipped;\n    }\n\n    mapping(uint256 => Stake) public stakes;\n\n    event StakeCreated(uint256 indexed stakeId, address indexed owner, uint256 amount, uint256 deadline);\n    event StakeResolved(uint256 indexed stakeId, bool shipped);\n\n    error NotResolver();\n    error NoStakeValue();\n    error DeadlineInPast();\n    error AlreadyResolved();\n    error InvalidStake();\n    error NotYetExpired();\n    error TransferFailed();\n\n    modifier onlyResolver() {\n        if (msg.sender != resolver) revert NotResolver();\n        _;\n    }\n\n    constructor(address _resolver, address _forfeiturePool) {\n        resolver = _resolver;\n        forfeiturePool = _forfeiturePool;\n    }\n\n    function createStake(uint256 deadline) external payable returns (uint256 stakeId) {\n        if (msg.value == 0) revert NoStakeValue();\n        if (deadline <= block.timestamp) revert DeadlineInPast();\n\n        stakeId = stakeCount++;\n        stakes[stakeId] = Stake({\n            owner: msg.sender,\n            amount: msg.value,\n            deadline: deadline,\n            resolved: false,\n            shipped: false\n        });\n\n        emit StakeCreated(stakeId, msg.sender, msg.value, deadline);\n    }\n\n    function resolve(uint256 stakeId, bool shipped) external onlyResolver {\n        Stake storage s = stakes[stakeId];\n        if (s.amount == 0) revert InvalidStake();\n        if (s.resolved) revert AlreadyResolved();\n\n        s.resolved = true;\n        s.shipped = shipped;\n\n        address recipient = shipped ? s.owner : forfeiturePool;\n        (bool ok, ) = payable(recipient).call{value: s.amount}(\"\");\n        if (!ok) revert TransferFailed();\n\n        emit StakeResolved(stakeId, shipped);\n    }\n\n    function claimExpired(uint256 stakeId) external {\n        Stake storage s = stakes[stakeId];\n        if (s.amount == 0) revert InvalidStake();\n        if (s.resolved) revert AlreadyResolved();\n        if (block.timestamp <= s.deadline) revert NotYetExpired();\n\n        s.resolved = true;\n        s.shipped = false;\n\n        (bool ok, ) = payable(forfeiturePool).call{value: s.amount}(\"\");\n        if (!ok) revert TransferFailed();\n\n        emit StakeResolved(stakeId, false);\n    }\n\n    function getStake(uint256 stakeId) external view returns (Stake memory) {\n        return stakes[stakeId];\n    }\n}"
+      }
+    }
+  }
+}

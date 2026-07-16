@@ -1,0 +1,23 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Stake {
+  id             Int      @id @default(autoincrement())
+  stakeId        Int      @unique
+  ownerAddress   String
+  amountWei      String
+  repo           String
+  prNumber       Int
+  deadline       DateTime
+  resolved       Boolean  @default(false)
+  shipped        Boolean?
+  resolvedTxHash String?
+  createdAt      DateTime @default(now())
+}
