@@ -10,12 +10,14 @@ export class CreateStakeDto {
   @IsString()
   amountWei: string;
 
-  @Matches(/^[\w.-]+\/[\w.-]+$/, { message: 'repo must be in "owner/name" format' })
-  repo: string;
+  @Matches(
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+\/?$/,
+    { message: 'Must be a GitHub pull request URL, e.g. https://github.com/owner/repo/pull/42' },
+  )
+  prUrl: string;
 
-  @IsInt()
-  @Min(1)
-  prNumber: number;
+  @IsString()
+  githubToken: string;
 
   @IsDateString()
   deadline: string;

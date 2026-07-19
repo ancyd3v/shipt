@@ -12,6 +12,7 @@ model Stake {
   id             Int      @id @default(autoincrement())
   stakeId        Int      @unique
   ownerAddress   String
+  githubUsername String
   amountWei      String
   repo           String
   prNumber       Int

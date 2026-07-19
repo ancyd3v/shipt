@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0a0812;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --purple: #6e54ff;
+  --lavender: #ddd7fe;
+  --paper: #f5f5f7;
+  --muted: #8e8e93;
+  --moss: #30d158;
+  --rust: #ff453a;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-purple: var(--purple);
+  --color-lavender: var(--lavender);
+  --color-paper: var(--paper);
+  --color-muted: var(--muted);
+  --color-moss: var(--moss);
+  --color-rust: var(--rust);
+
+  --font-display: var(--font-space-grotesk);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+}
+
+html, body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+.glow-orb {
+  position: fixed;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--purple);
+  filter: blur(120px);
+  opacity: 0.18;
+}
+
+.glass-nav {
+  background: rgba(10, 8, 18, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.glass-row {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--surface-border);
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.07);
+  outline: none;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+:root {
+  color-scheme: dark;
+}

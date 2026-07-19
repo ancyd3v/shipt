@@ -3,24 +3,55 @@ import {
   NotFoundException,
   BadGatewayException,
   ConflictException,
+  UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStakeDto } from './dto/create-stake.dto';
 import { SHIPSTAKE_ABI } from '../contract/shipstake.abi';
 import { publicClient, walletClient, SHIPSTAKE_ADDRESS } from '../chain/chain.client';
+import { verifyGithubToken } from '../auth/github-token.util';
+
+function parsePrUrl(prUrl: string) {
+  const match = prUrl.match(/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/);
+  if (!match) throw new BadRequestException('Could not parse repo/PR number from URL.');
+  const [, owner, name, prNumber] = match;
+  return { repo: `${owner}/${name}`, prNumber: Number(prNumber) };
+}
 
 @Injectable()
 export class StakesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateStakeDto) {
+  async create(dto: CreateStakeDto) {
+    const username = verifyGithubToken(dto.githubToken);
+    if (!username) {
+      throw new UnauthorizedException('Invalid or expired GitHub session — reconnect GitHub.');
+    }
+
+    const { repo, prNumber } = parsePrUrl(dto.prUrl);
+
+    // Real ownership check: the PR must actually belong to the connected
+    // GitHub user, otherwise anyone could stake on someone else's merged work.
+    const prRes = await fetch(`https://api.github.com/repos/${repo}/pulls/${prNumber}`);
+    if (!prRes.ok) {
+      throw new BadRequestException('Could not find that pull request on GitHub.');
+    }
+    const pr = (await prRes.json()) as { user?: { login?: string } };
+    if (!pr.user?.login || pr.user.login.toLowerCase() !== username.toLowerCase()) {
+      throw new UnauthorizedException(
+        `That PR was opened by @${pr.user?.login ?? 'unknown'}, not @${username}. You can only stake on your own PRs.`,
+      );
+    }
+
     return this.prisma.stake.create({
       data: {
         stakeId: dto.stakeId,
         ownerAddress: dto.ownerAddress,
+        githubUsername: username,
         amountWei: dto.amountWei,
-        repo: dto.repo,
-        prNumber: dto.prNumber,
+        repo,
+        prNumber,
         deadline: new Date(dto.deadline),
       },
     });
@@ -53,14 +84,10 @@ export class StakesService {
     const pastDeadline = new Date() > stake.deadline;
 
     if (!shippedInTime && !pastDeadline) {
-      // not merged yet, deadline hasn't passed - nothing to resolve
       return { status: 'pending', merged: mergedAt !== null };
     }
 
     try {
-      // Explicit gas: estimate ourselves, add only a 10% buffer.
-      // On Monad, gas is charged on the limit set, not gas actually used,
-      // so we never let a wallet's fallback estimate decide this.
       const gasEstimate = await publicClient.estimateContractGas({
         address: SHIPSTAKE_ADDRESS,
         abi: SHIPSTAKE_ABI,
@@ -89,9 +116,6 @@ export class StakesService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
-      // Chain says it's already resolved but our DB disagrees (e.g. DB was
-      // reset during testing) — sync the DB to match reality instead of
-      // erroring forever on every future check.
       if (message.includes('AlreadyResolved')) {
         await this.prisma.stake.update({
           where: { stakeId },
